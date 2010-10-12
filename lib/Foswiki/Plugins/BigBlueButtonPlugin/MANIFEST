@@ -1,0 +1,6 @@
+# Release manifest for BigBlueButtonPlugin
+data/System/BigBlueButtonPlugin.txt 0644 Documentation
+lib/Foswiki/Plugins/BigBlueButtonPlugin.pm 0644 Perl module
+lib/Foswiki/Plugins/BigBlueButtonPlugin/Core.pm 0644 Perl module
+lib/Foswiki/Plugins/BigBlueButtonPlugin/Config.spec config file for =configure= 
+

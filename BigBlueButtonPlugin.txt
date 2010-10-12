@@ -1,0 +1,101 @@
+---+!! !BigBlueButtonPlugin
+BigBlueButtonPlugin integrates [[http://bigbluebutton.org][BigBlueButton]] web conferencing into foswiki.
+
+
+%TOC%
+
+BigBlueButtonPlugin integrates [[http://bigbluebutton.org][BigBlueButton]] web conferencing (also known as BBB) into foswiki. It promotes using virtual meeting rooms for collaboration by simulating physical meeting rooms:
+   * All participants can become presenter.
+   * Meeting rooms are easy to find and enter.
+   * All participants have the option to see each other.
+   * It is obvious who is talking.
+   * You can see who is currently in the meeting room without having to enter first.
+
+BigBlueButton is flash-based open source web conferencing, supporting web conferencing from most modern browsers without requireding software installation. With this plugin, your authorized wiki users are just a click away from talking to each other.
+
+The Configuration for this Plugin lets you define one or more meeting rooms (usually following a naming theme such as flowers, painters, characters from Lord of the Rings...). The plugin will automatically create these meeting rooms on the BBB server, creates a wiki topic for each meeting room (a room named _Lotus_ will be described in topic !LotusConferenceRoom) and provides macros to join meetings and see who's in them. Topic %USERSWEB%.CategoryConferenceRooms is automatically created, listing all conference room topics.
+
+This plugin also supports a REST interface, allowing other applications to use it to access virtual meeting rooms using foswiki authentication.
+
+---++ REST Usage
+   * %SCRIPTURL{rest}%/BigBlueButtonPlugin/listRooms returns a list of rooms configured by this plugin.
+   * %SCRIPTURL{rest}%/BigBlueButtonPlugin/getJoinRoomUrl?room=Daisy returns a url that will log you into the room using your foswiki name.
+   * %SCRIPTURL{rest}%/BigBlueButtonPlugin/joinRoom?room=Daisy automatically logs you into that room using your foswiki name.
+   * %SCRIPTURL{rest}%/BigBlueButtonPlugin/getPeopleInRoom?room=Daisy returns a list of the people currently in the Daisy room.
+
+---++ Examples
+If you have configured BigBlueButtonPlugin to create a meeting room named 'Lotus', the statement
+<verbatim>
+%BBBROOMNAME{Lotus}%
+</verbatim>
+will create a link to the topic describing this meeting room, which includes the list of current participants and a link to join the room using your foswiki credentials. When you also installed [[http://foswiki.org/Extensions/ToolTipPlugin ToolTipPlugin]], hovering over this link will show you current participants, which is especially convenient when used in WebLeftBarLogin for example.
+
+To create a link that, when clicked, will transfer people into the 'Lotus' meeting room, add this:
+<verbatim>
+%BBBJOINROOM{Lotus}%
+</verbatim>
+
+To display the room details for the 'Lotus' room:
+<verbatim>
+%BBBROOMDETAILS{Lotus}%
+</verbatim>
+
+---++ Configuration
+
+Please delete %USERSWEB%.CategoryConferenceRooms and all !ConferenceRoom topics before making changes to the plugin's room configuration. The topics will automatically be re-created with up-to-date conference room list.
+
+This plugin has the following configuration settings (set in %SCRIPTURL{configure}%):
+
+   * *baseUrl*: the URL of BigBlueButton's API interface, for example http://demo.bigbluebutton.org/bigbluebutton/api
+   * *salt*: the security salt for the above url, found in the server's /var/lib/tomcat6/webapps/bigbluebutton/WEB-INF/classes/bigbluebutton.properties as beans.dynamicConferenceService.securitySalt. Example: 32321f1d-ae5e-4867-0071-9be6b70a9fcb
+   * *rooms*: the list of rooms you want this plugin to create. Example: <verbatim>
+[
+  {
+    'password' => '5678',
+    'name' => 'Daisy',
+    'audioBridge' => '71000'
+  },
+  {
+    'password' => '5678',
+    'name' => 'Iris',
+    'audioBridge' => '71001'
+  }
+]
+</verbatim>
+
+The asterisk configuration on the BigBlueButton server must also declare your conference room names, otherwise you will have no audio. On the BBB server, in /etc/asterisk/bbb_extensions.conf, add:
+<verbatim>
+[bbb-voip]
+...
+exten => Daisy,1,Playback(conf-placeintoconf)
+exten => Daisy,n,MeetMe(${EXTEN},cdMsT)
+exten => Iris,1,Playback(conf-placeintoconf)
+exten => Iris,n,MeetMe(${EXTEN},cdMsT)
+</verbatim>
+Note that the above example assumes that BBB has been configured to use the _MeetMe_ module for SIP. 
+
+---++ Installation Instructions
+
+You do not need to install anything in the browser to use this extension. The following instructions are for the administrator who installs the extension on the server.
+
+Open configure, and open the "Extensions" section. Use "Find More Extensions" to get a list of available extensions. Select "Install".
+
+If you have any problems, or if the extension isn't available in =configure=, then you can still install manually from the command-line. See http://foswiki.org/Support/ManuallyInstallingExtensions for more help.
+
+
+---++ Info
+
+Many thanks to the following sponsors for supporting this work:
+   * [[http://www.luxsit.ca][Luxsit Communications Corp.]]
+
+|  Author(s): | Arne.Joris@luxsit.ca|
+|  Copyright: | &copy; 2010 |
+|  License: | [[http://www.gnu.org/licenses/gpl.html][GPL (Gnu General Public License)]] |
+|  Release: | 1.0.0 |
+|  Version: | 20100928 (2010-09-28) |
+|  Change History: | 20100927 first version. |
+|  Dependencies: | <table class="foswikiTable" border="1"><tr><th>Name</th><th>Version</th><th>Description</th></tr><tr><td align="left">URI::Escape</td><td align="left">&gt;=3.28</td><td align="left">Required.</td></tr><tr><td align="left">Digest::SHA1</td><td align="left">&gt;=2.12</td><td align="left">Required.</td></tr><tr><td align="left">LWP::UserAgent</td><td align="left">&gt;=2.033</td><td align="left">Required.</td></tr><tr><td align="left">HTTP::Request</td><td align="left">&gt;=1.40</td><td align="left">Required.</td></tr><tr><td align="left">XML::Simple</td><td align="left">&gt;=2.18</td><td align="left">Required.</td></tr><tr><td align="left">JSON</td><td align="left">&gt;=2.21</td><td align="left">Required.</td></tr><tr><td align="left">BigBlueButton</td><td align="left">&gt;=0.7</td><td align="left">Required, the web conferencing service this plugin connects to.</td></tr></table> |
+|  Home page: | http://foswiki.org/bin/view/Extensions/BigBlueButtonPlugin |
+|  Support: | http://foswiki.org/bin/view/Support/BigBlueButtonPlugin |
+
+<!-- Do _not_ attempt to edit this topic; it is auto-generated. -->
