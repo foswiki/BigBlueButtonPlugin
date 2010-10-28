@@ -50,7 +50,13 @@ sub init {
 
     %rooms = ();
     foreach my $confRoom ( @{$conferenceRooms} ) {
-        eval { _createRoom( $confRoom->{'name'}, $confRoom->{'password'} ); };
+        eval {
+            _createRoom(
+                $confRoom->{'name'},
+                $confRoom->{'audioBridge'},
+                $confRoom->{'password'}
+            );
+        };
         if ($@) {
             if ( $@ =~ /404/ ) {
                 Foswiki::Func::writeWarning(
@@ -146,7 +152,7 @@ sub _command {
 # it does not exsit yet, and contacts BBB to create the room.
 ################################################################################
 sub _createRoom {
-    my ( $roomName, $password ) = @_;
+    my ( $roomName, $audioBridge, $password ) = @_;
 
     my $roomTopic = $roomName;
     $roomTopic =~ s/\b([a-z])/\u$1/g;
@@ -167,6 +173,7 @@ sub _createRoom {
                 'attendeePW'  => '1234',
                 'moderatorPW' => $password,
                 'welcome'     => $welcome,
+                'voiceBridge' => $audioBridge,
                 'logoutURL'   => $roomUrl
             }
         )
@@ -185,9 +192,7 @@ Current participants are: %BBBROOMDETAILS{$roomName}%
 To join: %BBBJOINROOM{$roomName}% 
 
 ---+++ Room details:
-   * The asterisk meetme room name (audio) is $roomName. If you use meetme, please ensure that /etc/asterisk/bbb_extensions.conf contains 
-      * exten => $roomName,1,Playback(conf-placeintoconf)
-      * exten => $roomName,n,MeetMe(\${EXTEN},cdMsT)
+   * This room's voice bridge (for asterisk) is $audioBridge.
    * Moderator password is $password
 
 This conference room was automatically created by the System.BigBlueButtonPlugin

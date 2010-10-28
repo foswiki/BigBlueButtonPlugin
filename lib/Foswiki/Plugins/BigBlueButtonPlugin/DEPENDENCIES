@@ -5,4 +5,3 @@ LWP::UserAgent,>=2.033,cpan,Required.
 HTTP::Request,>=1.40,cpan,Required.
 XML::Simple,>=2.18,cpan,Required.
 JSON,>=2.21,cpan,Required.
-BigBlueButton,>=0.7,external,Required, the web conferencing service this plugin connects to.
