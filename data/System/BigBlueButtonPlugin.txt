@@ -17,6 +17,8 @@ The Configuration for this Plugin lets you define one or more meeting rooms (usu
 
 This plugin also supports a REST interface, allowing other applications to use it to access virtual meeting rooms using foswiki authentication.
 
+Please see the [[#InstallationInstructions][Installation Instructions]] for how to make this plugin work once you have installed and enabled it.
+
 ---++ REST Usage
    * %SCRIPTURL{rest}%/BigBlueButtonPlugin/listRooms returns a list of rooms configured by this plugin.
    * %SCRIPTURL{rest}%/BigBlueButtonPlugin/getJoinRoomUrl?room=Daisy returns a url that will log you into the room using your foswiki name.
@@ -24,6 +26,14 @@ This plugin also supports a REST interface, allowing other applications to use i
    * %SCRIPTURL{rest}%/BigBlueButtonPlugin/getPeopleInRoom?room=Daisy returns a list of the people currently in the Daisy room.
 
 ---++ Examples
+
+To get a list of all available meeting rooms, use
+<verbatim>
+%BBBJOINROOM{}%
+</verbatim> which returns something like this:
+
+%BBBJOINROOM{}%
+
 If you have configured BigBlueButtonPlugin to create a meeting room named 'Lotus', the statement
 <verbatim>
 %BBBROOMNAME{Lotus}%
@@ -63,18 +73,12 @@ This plugin has the following configuration settings (set in %SCRIPTURL{configur
 ]
 </verbatim>
 
-The asterisk configuration on the BigBlueButton server must also declare your conference room names, otherwise you will have no audio. On the BBB server, in /etc/asterisk/bbb_extensions.conf, add:
-<verbatim>
-[bbb-voip]
-...
-exten => Daisy,1,Playback(conf-placeintoconf)
-exten => Daisy,n,MeetMe(${EXTEN},cdMsT)
-exten => Iris,1,Playback(conf-placeintoconf)
-exten => Iris,n,MeetMe(${EXTEN},cdMsT)
-</verbatim>
-Note that the above example assumes that BBB has been configured to use the _MeetMe_ module for SIP. 
+The asterisk configuration on the BigBlueButton server must also declare your audioBridge numbers, otherwise you will have no audio.  By default the asterisk configuration installed by BigBlueButton will use any five-digit number as audio bridge for conferencing.
 
 ---++ Installation Instructions
+#InstallationInstructions
+
+The default configuration parameters will create two rooms on a demo server maintained by the BigBlueButton crew for testing purposes. This lets you evaluate both the plugin and BigBlueButton without having to install anything else bug the plugin. After enabling the plugin, you will have to invoke either a REST function or a MACRO for the plugin to contact the BBB server, instruct it to create the meeting rooms and create topics for each room. Clicking [[%SCRIPTURL{rest}%/BigBlueButtonPlugin/listRooms][here]] will cause that for example.
 
 %$INSTALL_INSTRUCTIONS%
 

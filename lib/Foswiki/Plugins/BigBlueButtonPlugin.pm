@@ -38,8 +38,10 @@ our $NO_PREFS_IN_TOPIC = 1;
 # Global variables
 our $baseTopic;
 our $baseWeb;
-our $json;
 
+use vars qw( $BBBServer $json );
+
+################################################################################
 sub initPlugin {
     ( $baseTopic, $baseWeb ) = @_;
 
@@ -63,59 +65,109 @@ sub initPlugin {
 
     $json = JSON->new->allow_nonref;
 
-    require Foswiki::Plugins::BigBlueButtonPlugin::Core;
-    Foswiki::Plugins::BigBlueButtonPlugin::Core::init( $baseWeb, $baseTopic );
+    Foswiki::Func::writeDebug("BigBlueButtonPlugin initialized.");
 
     return 1;
 }
 
-sub _JOINROOM {
+###############################################################################
+sub finishPlugin {
+    return unless $BBBServer;
 
-    # Returns a URL that will let the currently logged in user
-    # join the specified room.
-    # Example: %BBBJOINROOM{Daisy}%
-
-    my ( $session, $params, $theTopic, $theWeb ) = @_;
-    my $roomName = $params->{_DEFAULT};
-    my $userName = Foswiki::Func::getWikiUserName();
-    return Foswiki::Func::renderText(
-        "[["
-          . Foswiki::Plugins::BigBlueButtonPlugin::Core::_getJoinRoomUrl(
-            $roomName, $userName )
-          . "][join $roomName conference room as $userName]]"
-    );
+    # We don't want to clean up all rooms and re-create them in
+    # non-persistent perl mode.
+    #$BBBServer->cleanup();
 }
 
+################################################################################
+sub init {
+    return if $BBBServer;
+
+    eval 'use Foswiki::Plugins::BigBlueButtonPlugin::BBBServer';
+    if ($@) {
+        Foswiki::Func::writeWarning($@);
+        print STDERR $@;
+    }
+    else {
+        $BBBServer = new Foswiki::Plugins::BigBlueButtonPlugin::BBBServer();
+        $BBBServer->initialize();
+    }
+}
+
+################################################################################
+sub _JOINROOM {
+
+  # Returns a URL that will let the currently logged in user
+  # join the specified room.
+  # Example: %BBBJOINROOM{Daisy}%
+  # When called with an emtpy room name, returns the list of URLs for all rooms.
+
+    my ( $session, $params, $theTopic, $theWeb ) = @_;
+    init();
+
+    my $roomName = $params->{_DEFAULT};
+    my $userName = Foswiki::Func::getWikiUserName();
+
+    if ( $roomName == "" ) {
+        my @roomNames = $BBBServer->listRooms();
+
+        my @rooms = ();
+        if ( defined @roomNames ) {
+            foreach my $room (@roomNames) {
+                my $url = $BBBServer->getJoinRoomUrl( $room, $userName );
+                if ( defined $url ) {
+                    push @rooms,
+                      Foswiki::Func::renderText( "[[" 
+                          . $url
+                          . "][join $room conference room as $userName]]" );
+                }
+            }
+        }
+        return join( ", ", @rooms );
+    }
+    else {
+        my $url = $BBBServer->getJoinRoomUrl( $roomName, $userName );
+        if ( defined $url ) {
+            return Foswiki::Func::renderText( "[[" 
+                  . $url
+                  . "][join $roomName conference room as $userName]]" );
+        }
+        else {
+            return "No such room $roomName.";
+        }
+    }
+}
+
+################################################################################
 sub _ROOMDETAILS {
 
     # Returns a list of people in the specified room.
     # Example: %BBBROOMDETAILS{Daisy}%
     my ( $session, $params, $theTopic, $theWeb ) = @_;
+    init();
 
     my $roomName = $params->{_DEFAULT};
-    my @people =
-      Foswiki::Plugins::BigBlueButtonPlugin::Core::_getPeopleInRoom($roomName);
-    return Foswiki::Func::renderText( join( ", ", @people ) );
+    my @people   = $BBBServer->getPeopleInRoom($roomName);
+    if ( defined @people ) {
+        return Foswiki::Func::renderText( join( ", ", @people ) );
+    }
+    else {
+        return "";
+    }
 }
 
+################################################################################
 sub _ROOMNAME {
 
     # Given a topic name like GullConferenceRoom,
     # returns link to that topic with tooltips.
     my ( $session, $params, $theTopic, $theWeb ) = @_;
-
-# %SEARCH{"name~'*ConferenceRoom'" excludetopic="%TOPIC%" type="query"
-#         scope="topic" nonoise="on" expandvariables="on" format="   * $percntBBBROOMNAME{ $topic }$percnt  "  }%
+    init();
 
     my $roomName = $params->{_DEFAULT};
     $roomName =~ s/^(.*)ConferenceRoom$/$1/g;
-    my %rooms = Foswiki::Plugins::BigBlueButtonPlugin::Core::_listRooms();
+    my %rooms = $BBBServer->listRooms();
 
-    Foswiki::Func::writeDebug(
-        "_ROOMNAME called for room $roomName (original $params->{_DEFAULT}).\n"
-    );
-    Foswiki::Func::writeDebug(
-        "_ROOMNAME rooms = " . Data::Dumper->Dump( [ \%rooms ] ) . "\n" );
     return "" unless exists $rooms{$roomName};
 
     eval 'require Foswiki::Plugins::ToolTipPlugin';
@@ -143,61 +195,70 @@ sub _ROOMNAME {
     }
 }
 
+################################################################################
 sub _RESTgetJoinRoomURL {
 
     # Returns the url that will send the given person to the given room.
     # Parameters: room
     my ( $session, $plugin, $functionname, $response ) = @_;
+    init();
 
     my $query    = $session->{'request'};
     my $userName = $session->{'remoteUser'};
     my $room     = $query->{'param'}->{'room'}[0];
 
-    my $url =
-      Foswiki::Plugins::BigBlueButtonPlugin::Core::_getJoinRoomUrl( $room,
-        $userName );
+    my $url = $BBBServer->getJoinRoomUrl( $room, $userName );
+    if ( defined $url ) {
+        my $r = {
+            'meetingRoomName' => $room,
+            'userName'        => $userName,
+            'joinURL'         => $url
+        };
 
-    my $r = {
-        'meetingRoomName' => $room,
-        'userName'        => $userName,
-        'joinURL'         => $url
-    };
+        $response->print( $json->pretty->encode($r) );
+    }
+    else {
+        $response->header( -status => 404 );
+    }
 
-    $response->print( $json->pretty->encode($r) );
     return;
 }
 
+################################################################################
 sub _RESTjoinRoom {
 
 # Redirects the calller to the url that will send the given person to the given room.
 # Parameters: room
     my ( $session, $plugin, $functionname, $response ) = @_;
+    init();
 
     my $query    = $session->{'request'};
     my $userName = $session->{'remoteUser'};
     my $room     = $query->{'param'}->{'room'}[0];
 
-    my $url =
-      Foswiki::Plugins::BigBlueButtonPlugin::Core::_getJoinRoomUrl( $room,
-        $userName );
-
-    return Foswiki::Func::redirectCgiQuery( undef, $url, 0 );
+    my $url = $BBBServer->getJoinRoomUrl( $room, $userName );
+    if ( defined $url ) {
+        return Foswiki::Func::redirectCgiQuery( undef, $url, 0 );
+    }
+    else {
+        $response->header( -status => 404 );
+        return;
+    }
 }
 
+################################################################################
 sub _RESTgetPeopleInRoom {
 
     # Returns a list of current participants.
     my ( $session, $plugin, $functionname, $response ) = @_;
+    init();
 
     my $query = $session->{'request'};
     my $room  = $query->{'param'}->{'room'}[0];
 
     my $r = {
         'meetingRoomName' => $room,
-        'participants'    => [
-            Foswiki::Plugins::BigBlueButtonPlugin::Core::_getPeopleInRoom(
-                $room)
-        ]
+        'participants'    => [ $BBBServer->getPeopleInRoom($room) ]
     };
 
     $response->print( $json->pretty->encode($r) );
@@ -205,23 +266,23 @@ sub _RESTgetPeopleInRoom {
     return;
 }
 
+################################################################################
 sub _RESTlistRooms {
-    my ( $session, $plugin, $functionName, $response ) = @_;
 
 # Returns a list of meeting rooms, with room name and list of current participants.
+    my ( $session, $plugin, $functionName, $response ) = @_;
+    init();
 
     my $r = { 'meetingRooms' => [] };
-    foreach
-      my $room ( Foswiki::Plugins::BigBlueButtonPlugin::Core::_listRooms() )
-    {
-        push @{ $r->{'meetingRooms'} },
-          {
-            'meetingRoomName' => $room,
-            'participants'    => [
-                Foswiki::Plugins::BigBlueButtonPlugin::Core::_getPeopleInRoom(
-                    $room)
-            ]
-          };
+    foreach my $room ( $BBBServer->listRooms() ) {
+        my @people = $BBBServer->getPeopleInRoom($room);
+        if ( defined @people ) {
+            push @{ $r->{'meetingRooms'} },
+              {
+                'meetingRoomName' => $room,
+                'participants'    => [@people]
+              };
+        }
     }
 
     $response->print( $json->pretty->encode($r) );
