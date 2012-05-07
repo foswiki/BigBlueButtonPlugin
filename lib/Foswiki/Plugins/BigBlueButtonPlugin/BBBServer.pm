@@ -19,8 +19,7 @@ use constant DEBUG => 1;
 # writeDebug: print to working/logs/debug.txt when DEBUG is set.
 ################################################################################
 sub writeDebug {
-    Foswiki::Func::writeDebug("BigBlueButtonPlugin::BBBServer - $_[0]\n")
-      if DEBUG;
+    Foswiki::Func::writeDebug("BigBlueButtonPlugin::BBBServer - $_[0]\n") if DEBUG;
 }
 
 ################################################################################
